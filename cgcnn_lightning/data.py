@@ -240,7 +240,7 @@ class StruData(Dataset):
 
 def get_train_loader(dataset, collate_fn=default_collate,
                      batch_size=128, train_ratio=0.75,
-                     val_ratio=0.25, **kwargs):
+                     val_ratio=0.25, num_workers=1, **kwargs):
     """
     用于划分数据集以训练、评估数据集
     数据集在使用函数之前需要洗牌
@@ -260,7 +260,7 @@ def get_train_loader(dataset, collate_fn=default_collate,
       DataLoader that random samples the validation data.
 
     """
-    num_workers = 8
+
     total_size = len(dataset)  # 全部数据集多少个
     #
     indices = list(range(total_size))

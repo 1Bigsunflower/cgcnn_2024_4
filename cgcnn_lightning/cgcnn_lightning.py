@@ -17,22 +17,9 @@ from data import StruData, get_train_loader, collate_pool_matbench
 # 处理anaconda和torch重复文件
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 parser = argparse.ArgumentParser(description='Crystal Graph Convolutional Neural Networks')
-parser.add_argument('--max_epochs', default=1000, type=int, metavar='N',
-                    help='number of total epochs to run (default: 1000)')
-parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
-                    metavar='LR', help='initial learning rate (default: '
-                                       '0.01)')
-parser.add_argument('--lr-milestones', default=[100], nargs='+', type=int,
-                    metavar='N', help='milestones for scheduler (default: '
-                                      '[100])')
-parser.add_argument('--optim', default='SGD', type=str, metavar='SGD',
-                    help='choose an optimizer, SGD or Adam, (default: SGD)')
 # emb dim
-parser.add_argument('--atom-fea-len', default=64, type=int, metavar='N',
+parser.add_argument('--atom_fea_len', default=64, type=int, metavar='N',
                     help='number of hidden atom features in conv layers')
-
-parser.add_argument('--h-fea-len', default=128, type=int, metavar='N',
-                    help='number of hidden features after pooling')
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -110,11 +97,12 @@ class Cgcnn_lightning(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=0.01, momentum=0.9, weight_decay=0)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_milestones, gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100], gamma=0.1)
         return {
             "optimizer": optimizer,
             "lr_scheduler": scheduler
         }
+
 
 # 34.77919006347656
 # 35.36737060546875
@@ -131,7 +119,7 @@ def main():
     torch.backends.cudnn.deterministic = True
     seed(init_seed)  # Random特有
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     # os.environ['CUDA_VISIBLE_DEVICES'] = '' + str(args.fold) + ''
     mb = MatbenchBenchmark(
         autoload=False,
@@ -160,7 +148,8 @@ def main():
                                                         collate_fn=collate_fn,
                                                         batch_size=128,
                                                         train_ratio=0.75,
-                                                        val_ratio=0.25
+                                                        val_ratio=0.25,
+                                                        num_workers=1
                                                         )
 
             if len(dataset) < 500:
@@ -186,12 +175,11 @@ def main():
             early_stop_callback = EarlyStopping(monitor="val_MAE", min_delta=0.00, patience=500, verbose=True,
                                                 mode="min")
             checkpoint_callback = ModelCheckpoint(
-                monitor='val_MAE', dirpath='Cgcnn_' + task.dataset_name,  # Directory to save the checkpoints
-                filename='fold' + str(fold) + '_dim' + str(args.atom_fea_len) + '_init_early', save_top_k=1,
+                monitor='val_MAE', dirpath=f'Cgcnn_{task.dataset_name}',  # Directory to save the checkpoints
+                filename=f'fold{fold}_dim{args.atom_fea_len}', save_top_k=1,
                 mode='min')
             trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback, checkpoint_callback],
-                                 default_root_dir=task.dataset_name + "_" + str(fold) + "_" + str(
-                                     args.atom_fea_len) + "/")  # , log_every_n_steps=1)
+                                 enable_progress_bar=False)
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
             model.eval()
@@ -201,7 +189,7 @@ def main():
             test_loader = DataLoader(dataset=dataset_test,
                                      batch_size=128,
                                      collate_fn=collate_fn,
-                                     num_workers=8)
+                                     num_workers=1)
 
             trainer.test(model, dataloaders=test_loader)
 
