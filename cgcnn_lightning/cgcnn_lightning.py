@@ -148,8 +148,7 @@ def main():
                                                         collate_fn=collate_fn,
                                                         batch_size=128,
                                                         train_ratio=0.75,
-                                                        val_ratio=0.25,
-                                                        num_workers=1
+                                                        val_ratio=0.25
                                                         )
 
             if len(dataset) < 500:
@@ -188,8 +187,7 @@ def main():
             dataset_test = StruData(test_inputs, test_outputs)
             test_loader = DataLoader(dataset=dataset_test,
                                      batch_size=128,
-                                     collate_fn=collate_fn,
-                                     num_workers=1)
+                                     collate_fn=collate_fn)
 
             trainer.test(model, dataloaders=test_loader)
 
