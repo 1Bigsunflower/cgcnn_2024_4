@@ -2,6 +2,7 @@ import csv
 
 import numpy as np
 from matplotlib import pyplot as plt
+import matplotlib.lines as mlines
 
 
 def draw_errorbar(init_list, emb_list, benchemark, task_name):
@@ -36,6 +37,15 @@ def draw_errorbar(init_list, emb_list, benchemark, task_name):
         ax.set_title(task_name[i])
     fig.text(0.5, 0.04, 'Embedding Dimension', ha='center', fontsize=20)
     fig.text(0.04, 0.5, 'Mean Absolute Error (MAE)', va='center', rotation='vertical', fontsize=20)
+    # legend
+    handles = [
+        mlines.Line2D([], [], color=(144 / 255, 188 / 255, 216 / 255), marker='o', markersize=6, linestyle='None',
+                      label='Cgcnn'),
+        mlines.Line2D([], [], color=(0.9372549019607843, 0.396078431372549, 0.403921568627451), marker='o',
+                      markersize=6, linestyle='None', label='Embedding'),
+        mlines.Line2D([], [], color='gray', linestyle='--', label='Leaderboard')
+    ]
+    fig.legend(handles=handles, fontsize=12)
     plt.suptitle('CGCNN For 6 Tasks In Matbench', fontsize=30)
     plt.savefig("CGCNN_compare.pdf", bbox_inches='tight', pad_inches=0)
     plt.show()
