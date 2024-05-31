@@ -208,9 +208,9 @@ class StruData(Dataset):
         for nbr in all_nbrs:
             if len(nbr) < self.max_num_nbr:
                 # 如果邻居数量小于 max_num_nbr，发出警告并进行填充
-                warnings.warn('{} not find enough neighbors to build graph. '
-                              'If it happens frequently, consider increase '
-                              'radius.'.format(idx))
+                # warnings.warn('{} not find enough neighbors to build graph. '
+                #               'If it happens frequently, consider increase '
+                #               'radius.'.format(idx))
                 nbr_fea_idx.append(list(map(lambda x: x[2], nbr)) +
                                    [0] * (self.max_num_nbr - len(nbr)))
                 nbr_fea.append(list(map(lambda x: x[1], nbr)) +
@@ -269,9 +269,15 @@ def get_train_loader(dataset, collate_fn=default_collate,
 
     train_loader = DataLoader(dataset, batch_size=batch_size,
                               sampler=train_sampler,
-                              collate_fn=collate_fn)
+                              collate_fn=collate_fn,
+                              pin_memory=True,
+                              num_workers=42
+                              )
     val_loader = DataLoader(dataset, batch_size=batch_size,
                             sampler=val_sampler,
-                            collate_fn=collate_fn)
+                            collate_fn=collate_fn,
+                            pin_memory=True,
+                            num_workers=42
+                            )
 
     return train_loader, val_loader
