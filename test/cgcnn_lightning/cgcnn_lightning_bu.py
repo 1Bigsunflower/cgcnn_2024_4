@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 import sys
 
@@ -57,6 +56,7 @@ class Cgcnn_lightning(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
+
         input_var = (x[0], x[1], x[2], x[3])
 
         target_var = self.normalizer.norm(y)
@@ -104,6 +104,11 @@ class Cgcnn_lightning(pl.LightningModule):
         }
 
 
+# 34.77919006347656
+# 35.36737060546875
+# 90.14500427246094
+# 40.564109802246094
+# 57.491981506347656
 def main():
     init_seed = 42
     torch.manual_seed(init_seed)
@@ -114,7 +119,8 @@ def main():
     torch.backends.cudnn.deterministic = True
     seed(init_seed)  # Random特有
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '' + str(args.fold) + ''
     mb = MatbenchBenchmark(
         autoload=False,
         subset=[
@@ -128,11 +134,12 @@ def main():
     for task in mb.tasks:
         task.load()
         for fold in task.folds:
-
+            #
             train_inputs, train_outputs = task.get_train_and_val_data(fold)  # 获取训练集
 
             dataset = StruData(train_inputs, train_outputs)
             collate_fn = collate_pool_matbench
+            # 训练 验证资料
             train_loader, val_loader = get_train_loader(dataset=dataset,
                                                         collate_fn=collate_fn,
                                                         batch_size=128,
@@ -150,15 +157,10 @@ def main():
 
             # build model
             structures, _, = dataset[0]
-            # orig_atom_fea_len = structures[0].shape[-1]
+            orig_atom_fea_len = structures[0].shape[-1]
             nbr_fea_len = structures[1].shape[-1]
 
-            atom_file = 'atom.json'
-            assert os.path.exists(atom_file), f'{atom_file} does not exist!'
-            with open(atom_file, 'r') as file:
-                data = json.load(file)
-            element_num = len(data)
-            model = Cgcnn_lightning(CrystalGraphConvNet(element_num, nbr_fea_len,
+            model = Cgcnn_lightning(CrystalGraphConvNet(orig_atom_fea_len, nbr_fea_len,
                                                         atom_fea_len=args.atom_fea_len,
                                                         n_conv=3,
                                                         h_fea_len=128,
@@ -168,12 +170,12 @@ def main():
             early_stop_callback = EarlyStopping(monitor="val_MAE", min_delta=0.00, patience=500, verbose=True,
                                                 mode="min")
             # checkpoint_callback = ModelCheckpoint(
-            #     monitor='val_MAE', dirpath=f'Cgcnn_{task.dataset_name}_emb',  # Directory to save the checkpoints
-            #     filename=f'fold{fold}_dim{args.atom_fea_len}_emb', save_top_k=1,
+            #     monitor='val_MAE', dirpath=f'Cgcnn_{task.dataset_name}',  # Directory to save the checkpoints
+            #     filename=f'fold{fold}_dim{args.atom_fea_len}', save_top_k=1,
             #     mode='min')
             trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback],  # checkpoint_callback]
                                  # enable_progress_bar=False,
-                                 default_root_dir=f'{task.dataset_name}_{fold}_{args.atom_fea_len}_emb/')
+                                 default_root_dir=f'{task.dataset_name}_{fold}_{args.atom_fea_len}/')
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
             model.eval()
@@ -183,8 +185,8 @@ def main():
             test_loader = DataLoader(dataset=dataset_test,
                                      batch_size=128,
                                      collate_fn=collate_fn,
-                                     num_workers=12,
-                                     prefetch_factor=4,
+                                     num_workers=4,
+                                     prefetch_factor=2,
                                      persistent_workers=True
                                      )
 

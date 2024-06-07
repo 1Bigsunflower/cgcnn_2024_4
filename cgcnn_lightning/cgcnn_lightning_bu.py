@@ -119,7 +119,7 @@ def main():
     torch.backends.cudnn.deterministic = True
     seed(init_seed)  # Random特有
 
-    # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     # os.environ['CUDA_VISIBLE_DEVICES'] = '' + str(args.fold) + ''
     mb = MatbenchBenchmark(
         autoload=False,
@@ -173,7 +173,7 @@ def main():
             #     monitor='val_MAE', dirpath=f'Cgcnn_{task.dataset_name}',  # Directory to save the checkpoints
             #     filename=f'fold{fold}_dim{args.atom_fea_len}', save_top_k=1,
             #     mode='min')
-            trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback],   # checkpoint_callback]
+            trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback],  # checkpoint_callback]
                                  # enable_progress_bar=False,
                                  default_root_dir=f'{task.dataset_name}_{fold}_{args.atom_fea_len}/')
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
@@ -184,7 +184,11 @@ def main():
             dataset_test = StruData(test_inputs, test_outputs)
             test_loader = DataLoader(dataset=dataset_test,
                                      batch_size=128,
-                                     collate_fn=collate_fn)
+                                     collate_fn=collate_fn,
+                                     num_workers=12,
+                                     prefetch_factor=4,
+                                     persistent_workers=True
+                                     )
 
             trainer.test(model, dataloaders=test_loader)
 

@@ -274,13 +274,17 @@ def get_train_loader(dataset, collate_fn=default_collate,
                               sampler=train_sampler,
                               collate_fn=collate_fn,
                               pin_memory=True,
-                              num_workers=36
+                              num_workers=12,
+                              prefetch_factor=4,
+                              persistent_workers=True
                               )
     val_loader = DataLoader(dataset, batch_size=batch_size,
                             sampler=val_sampler,
                             collate_fn=collate_fn,
                             pin_memory=True,
-                            num_workers=36
+                            num_workers=12,
+                            prefetch_factor=4,
+                            persistent_workers=True
                             )
 
     return train_loader, val_loader
