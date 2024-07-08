@@ -168,10 +168,6 @@ def main():
 
             early_stop_callback = EarlyStopping(monitor="val_MAE", min_delta=0.00, patience=500, verbose=True,
                                                 mode="min")
-            checkpoint_callback = ModelCheckpoint(
-                monitor='val_MAE', dirpath=f'Cgcnn_{task.dataset_name}',  # Directory to save the checkpoints
-                filename=f'fold{fold}_dim{args.atom_fea_len}', save_top_k=1,
-                mode='min')
             trainer = pl.Trainer(max_epochs=100)
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 

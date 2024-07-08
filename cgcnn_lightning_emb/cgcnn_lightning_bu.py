@@ -7,6 +7,7 @@ import lightning.pytorch as pl
 import numpy as np
 import torch
 import torch.nn as nn
+from pytorch_lightning import seed_everything
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
 from matbench.bench import MatbenchBenchmark
@@ -106,6 +107,7 @@ class Cgcnn_lightning(pl.LightningModule):
 
 def main():
     init_seed = 42
+    seed_everything(init_seed)
     torch.manual_seed(init_seed)
     torch.cuda.manual_seed(init_seed)
     torch.cuda.manual_seed_all(init_seed)
@@ -172,7 +174,8 @@ def main():
             #     filename=f'fold{fold}_dim{args.atom_fea_len}_emb', save_top_k=1,
             #     mode='min')
             trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback],  # checkpoint_callback]
-                                 # enable_progress_bar=False,
+                                 enable_progress_bar=False,
+                                 log_every_n_steps=1000,
                                  default_root_dir=f'{task.dataset_name}_{fold}_{args.atom_fea_len}_emb/')
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
@@ -183,7 +186,7 @@ def main():
             test_loader = DataLoader(dataset=dataset_test,
                                      batch_size=128,
                                      collate_fn=collate_fn,
-                                     num_workers=12,
+                                     num_workers=32,
                                      prefetch_factor=4,
                                      persistent_workers=True
                                      )

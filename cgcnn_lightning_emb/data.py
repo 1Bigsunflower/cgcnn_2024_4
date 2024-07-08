@@ -271,7 +271,7 @@ def get_train_loader(dataset, collate_fn=default_collate,
                               sampler=train_sampler,
                               collate_fn=collate_fn,
                               pin_memory=True,
-                              num_workers=12,
+                              num_workers=32,
                               prefetch_factor=4,
                               persistent_workers=True
                               )
@@ -279,7 +279,7 @@ def get_train_loader(dataset, collate_fn=default_collate,
                             sampler=val_sampler,
                             collate_fn=collate_fn,
                             pin_memory=True,
-                            num_workers=12,
+                            num_workers=32,
                             prefetch_factor=4,
                             persistent_workers=True
                             )

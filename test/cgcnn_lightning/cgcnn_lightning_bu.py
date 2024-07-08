@@ -119,7 +119,7 @@ def main():
     torch.backends.cudnn.deterministic = True
     seed(init_seed)  # Random特有
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     # os.environ['CUDA_VISIBLE_DEVICES'] = '' + str(args.fold) + ''
     mb = MatbenchBenchmark(
         autoload=False,
@@ -175,6 +175,7 @@ def main():
             #     mode='min')
             trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback],  # checkpoint_callback]
                                  # enable_progress_bar=False,
+                                 log_every_n_steps=1000,
                                  default_root_dir=f'{task.dataset_name}_{fold}_{args.atom_fea_len}/')
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 

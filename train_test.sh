@@ -5,7 +5,7 @@
 original_dir=$(pwd)
 
 # 设置最大并行数量
-max_parallel=2
+max_parallel=1
 # 计数器
 parallel_count=0
 
@@ -13,7 +13,7 @@ cgcnn_path="cgcnn_lightning"
 cgcnn_emb_path="cgcnn_lightning_emb"
 
 # atom_fea_len_value=(1 2 4 8 16 32 64 128)
-atom_fea_len_value=(2 4 8)
+atom_fea_len_value=(32 64)  #  1 2 4 8 16 128
 for dim in "${atom_fea_len_value[@]}"
 do
       echo "Running with atom_fea_len = $dim"
