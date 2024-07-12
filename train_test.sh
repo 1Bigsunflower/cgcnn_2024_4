@@ -5,7 +5,7 @@
 original_dir=$(pwd)
 
 # 设置最大并行数量
-max_parallel=1
+max_parallel=2
 # 计数器
 parallel_count=0
 
@@ -19,7 +19,7 @@ do
       echo "Running with atom_fea_len = $dim"
 
       cd "$cgcnn_path" || exit 1
-      nohup python cgcnn_lightning_bu.py --atom_fea_len "$dim" > "cgcnn_dim${dim}_bu.log" 2>&1 &
+      nohup python cgcnn_lightning.py --atom_fea_len "$dim" > "cgcnn_dim${dim}.log" 2>&1 &
       cd "$original_dir" || exit 1
 
       ((parallel_count++))
@@ -31,7 +31,7 @@ do
       fi
 
       cd "$cgcnn_emb_path" || exit 1
-      nohup python cgcnn_lightning_bu.py --atom_fea_len "$dim" > "cgcnn_dim${dim}_emb_bu.log" 2>&1 &
+      nohup python cgcnn_lightning.py --atom_fea_len "$dim" > "cgcnn_dim${dim}_emb.log" 2>&1 &
       cd "$original_dir" || exit 1
 
       ((parallel_count++))
