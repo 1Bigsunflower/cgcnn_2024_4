@@ -189,6 +189,7 @@ class StruData(Dataset):
     def __len__(self):
         return len(self.input)
 
+    @functools.lru_cache(maxsize=None)
     def __getitem__(self, idx):
         # 读取晶体结构数据
         crystal = self.input.iloc[idx]
@@ -274,7 +275,7 @@ def get_train_loader(dataset, collate_fn=default_collate,
                               sampler=train_sampler,
                               collate_fn=collate_fn,
                               pin_memory=True,
-                              num_workers=12,
+                              num_workers=os.cpu_count() // 4,
                               prefetch_factor=4,
                               persistent_workers=True
                               )
@@ -282,7 +283,7 @@ def get_train_loader(dataset, collate_fn=default_collate,
                             sampler=val_sampler,
                             collate_fn=collate_fn,
                             pin_memory=True,
-                            num_workers=12,
+                            num_workers=os.cpu_count() // 4,
                             prefetch_factor=4,
                             persistent_workers=True
                             )

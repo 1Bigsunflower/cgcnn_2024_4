@@ -13,14 +13,14 @@ from torch.utils.data import DataLoader
 from random import sample, seed
 from model import CrystalGraphConvNet
 from data import StruData, get_train_loader, collate_pool_matbench
+from pytorch_lightning import seed_everything
 
-# 处理anaconda和torch重复文件
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+# # 处理anaconda和torch重复文件
+# os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 parser = argparse.ArgumentParser(description='Crystal Graph Convolutional Neural Networks')
 # emb dim
 parser.add_argument('--atom_fea_len', default=64, type=int, metavar='N',
                     help='number of hidden atom features in conv layers')
-
 args = parser.parse_args(sys.argv[1:])
 
 
@@ -58,13 +58,10 @@ class Cgcnn_lightning(pl.LightningModule):
         x, y = batch
 
         input_var = (x[0], x[1], x[2], x[3])
-
-        target_var = self.normalizer.norm(y)
-
         y_hat = self.crystalGraphConvNet(*input_var)
-        loss_fn = nn.MSELoss()
 
-        loss = loss_fn(y_hat, target_var)
+        target_normed = self.normalizer.norm(y)
+        loss = nn.MSELoss()(y_hat, target_normed)
 
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, batch_size=128)
         return loss
@@ -73,12 +70,11 @@ class Cgcnn_lightning(pl.LightningModule):
         x, y = batch
         input_var = (x[0], x[1], x[2], x[3])
 
-        target_var = self.normalizer.norm(y)
-
+        target_normed = self.normalizer.norm(y)
         y_hat = self.crystalGraphConvNet(*input_var)
 
         loss_fn = nn.L1Loss()  # mae
-        val_loss = loss_fn(y_hat, target_var)
+        val_loss = loss_fn(y_hat, target_normed)
 
         self.log('val_MAE', val_loss, on_epoch=True, prog_bar=True, batch_size=128)
         return val_loss
@@ -87,12 +83,10 @@ class Cgcnn_lightning(pl.LightningModule):
         x, y = batch
         input_var = (x[0], x[1], x[2], x[3])
 
-        target_var = y
-
         y_hat = self.crystalGraphConvNet(*input_var)
         # loss
         loss_fn = nn.L1Loss()
-        test_loss = loss_fn(self.normalizer.denorm(y_hat), target_var)
+        test_loss = loss_fn(self.normalizer.denorm(y_hat), y)
         self.log('test_MAE', test_loss, on_epoch=True, prog_bar=True, batch_size=128)
 
     def configure_optimizers(self):
@@ -111,6 +105,7 @@ class Cgcnn_lightning(pl.LightningModule):
 # 57.491981506347656
 def main():
     init_seed = 42
+    seed_everything(init_seed)
     torch.manual_seed(init_seed)
     torch.cuda.manual_seed(init_seed)
     torch.cuda.manual_seed_all(init_seed)
@@ -119,7 +114,7 @@ def main():
     torch.backends.cudnn.deterministic = True
     seed(init_seed)  # Random特有
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     # os.environ['CUDA_VISIBLE_DEVICES'] = '' + str(args.fold) + ''
     mb = MatbenchBenchmark(
         autoload=False,
@@ -130,6 +125,8 @@ def main():
             "matbench_log_gvrh",  # 10,987
             "matbench_log_kvrh",  # 10,987
             "matbench_perovskites"  # 1w8
+            "matbench_mp_gap",  # 106,113
+            "matbench_mp_e_form"  # 132,752
         ]
     )
     if torch.cuda.is_available():
@@ -163,24 +160,35 @@ def main():
             structures, _, = dataset[0]
             orig_atom_fea_len = structures[0].shape[-1]
             nbr_fea_len = structures[1].shape[-1]
-
-            model = Cgcnn_lightning(CrystalGraphConvNet(orig_atom_fea_len, nbr_fea_len,
-                                                        atom_fea_len=args.atom_fea_len,
-                                                        n_conv=3,
-                                                        h_fea_len=128,
-                                                        n_h=1,
-                                                        classification=False), normalizer)
+            crystalGraphConvNet = CrystalGraphConvNet(orig_atom_fea_len, nbr_fea_len,
+                                                      atom_fea_len=args.atom_fea_len,
+                                                      n_conv=3,
+                                                      h_fea_len=128,
+                                                      n_h=1,
+                                                      classification=False)
+            model = Cgcnn_lightning(crystalGraphConvNet, normalizer)
 
             early_stop_callback = EarlyStopping(monitor="val_MAE", min_delta=0.00, patience=500, verbose=True,
-                                                mode="min")
+                                                mode="min", )
             checkpoint_callback = ModelCheckpoint(
-                monitor='val_MAE', dirpath=f'Cgcnn_{task.dataset_name}',  # Directory to save the checkpoints
-                filename=f'fold{fold}_dim{args.atom_fea_len}', save_top_k=1,
-                mode='min')
-            trainer = pl.Trainer(max_epochs=1000, callbacks=[early_stop_callback, checkpoint_callback],
-                                 enable_progress_bar=False)
+                monitor='val_MAE',
+                save_top_k=1,
+                mode='min',
+                dirpath=f'Cgcnn_{task.dataset_name}_fold{fold}_dim{args.atom_fea_len}',
+                filename='epoch{epoch:04d}-train_loss{train_loss:.4f}-val_loss{val_loss:.4f}',
+                auto_insert_metric_name=False)
+            trainer = pl.Trainer(max_epochs=10000, callbacks=[early_stop_callback, checkpoint_callback],
+                                 enable_progress_bar=False,
+                                 log_every_n_steps=1000,
+                                 precision='16-mixed'
+                                 )
             trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
+            # 加载验证损失最小的模型权重
+            best_model_path = checkpoint_callback.best_model_path
+            model = Cgcnn_lightning.load_from_checkpoint(best_model_path,
+                                                         crystalGraphConvNet=crystalGraphConvNet,
+                                                         normalizer=normalizer)
             model.eval()
             # 测试
             test_inputs, test_outputs = task.get_test_data(fold, include_target=True)
